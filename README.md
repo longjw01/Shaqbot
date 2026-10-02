@@ -60,7 +60,7 @@ flowchart TD
     Execute["DriveCommand.execute()"] --> Mode{"Enabled Teleop?"}
     Mode -->|Yes| Read["Read sticks and multiply by 0.6"]
     Read --> Arcade["DriveSubsystem.arcadeDrive()"]
-    Arcade --> Helper["DifferentialDrive: deadband, square, mix"]
+    Arcade --> Helper["WPILib DifferentialDrive: deadband, square, mix"]
     Helper --> Left["Left motor: PWM 0, inverted"]
     Helper --> Right["Right motor: PWM 1"]
     Mode -->|No| Stop["DriveSubsystem.stop()"]
@@ -80,6 +80,8 @@ While disabled, normal commands do not execute, and WPILib prevents motor operat
 | Right motor inversion | `false` | `DriveSubsystem` |
 | Controller USB slot | 0 | `RobotContainer` |
 | Input scaling | 0.6 | `DriveCommand` |
+| Drive-helper deadband | 0.02, applied after input scaling | WPILib `RobotDriveBase` default |
+| Input squaring | Enabled by the `true` argument | WPILib `DifferentialDrive` |
 
 PWM ports are roboRIO connections, not CAN device IDs.
 
@@ -90,11 +92,40 @@ double forward = -controller.getLeftY() * INPUT_SCALE;
 double turn = -controller.getRightX() * INPUT_SCALE;
 ```
 
-The negative signs preserve the original direction mapping. The scale is applied before `DifferentialDrive` processes the inputs. The helper:
+### Why invert a motor and negate the stick inputs?
 
-1. Applies a small deadband to ignore inputs near zero.
-2. Squares input magnitudes while retaining their signs.
-3. Combines forward and turning inputs into left/right outputs.
+These settings correct directions at different points in the program:
+
+| Setting | What it changes | Why it is used |
+|---|---|---|
+| `leftMotor.setInverted(true)` | The left motor's electrical output direction | Preserves the original robot's working motor direction configuration |
+| `-controller.getLeftY()` | The forward/reverse request | Xbox stick Y is negative when pushed forward; WPILib expects positive input for forward movement |
+| `-controller.getRightX()` | The turning request | Xbox stick X is positive when pushed right; WPILib expects negative rotation for a clockwise (right) turn |
+
+On a differential drivetrain, left and right motors are commonly mounted facing opposite directions. Their mounting, wiring, and gearing determine which motor outputs must be inverted so a forward request moves both sides forward. ShaqBot keeps the left-side inversion from its original working code; left-side inversion is not a universal rule for every robot.
+
+The joystick negative signs translate the controller's axis conventions into WPILib's driving conventions. WPILib treats positive rotation as counterclockwise (a left turn), so negating the right-stick X value makes a right stick movement request a right turn.
+
+Motor inversion does not replace the joystick sign corrections: one handles hardware direction, while the others handle how the driver's inputs are interpreted. None of these changes input magnitude; `INPUT_SCALE` controls that separately.
+
+### Where deadband and squaring happen
+
+Our `DriveCommand` reads and scales the inputs, then passes them through our subsystem to WPILib:
+
+```java
+// In DriveSubsystem: call the WPILib drive helper.
+drive.arcadeDrive(forward, turn, true);
+```
+
+**The deadband and squaring are implemented inside WPILib, not as separate calculations in ShaqBot's source files.** In WPILib 2024.3.2, this call:
+
+1. Applies the default **0.02 deadband** inherited from `RobotDriveBase`. Inputs with a magnitude at or below 0.02 become zero; larger inputs are rescaled to preserve the full range.
+2. Squares the input magnitudes while retaining their signs, because the third argument, `true`, enables `squareInputs`. This gives gentler response near stick center.
+3. Combines forward and turning inputs into left/right motor outputs.
+
+The original two-argument `arcadeDrive()` call also enabled squaring by default and used the same deadband. The conversion keeps that behavior and makes the squaring argument explicit.
+
+The deadband is applied **after** our 0.6 input scaling. It therefore ignores raw stick inputs up to approximately 0.033 (0.02 divided by 0.6). Calling `drive.setDeadband(...)` would change the helper's deadband; this project leaves its default unchanged. Adding another deadband or squaring calculation in `DriveCommand` would apply that processing twice and change how the robot drives.
 
 Therefore, `0.6` does **not** mean a direct 60% motor output limit. Full forward stick with no turning produces approximately 35% output after the default deadband and squaring.
 
@@ -239,10 +270,6 @@ Begin with the robot secured and the wheels clear of the floor.
 | Switch from Autonomous to Teleop | Driver control becomes available |
 
 Then compare normal floor driving with the original program. Expand these checks when mechanisms or commands are added.
-
-### Conversion verification status
-
-The conversion was reviewed against WPILib 2024.3.2 source, and both Mermaid diagrams were rendered and visually checked. A build attempt stopped before Java compilation because the review environment could not download Gradle 8.5. Compilation, deployment, and robot behavior still need verification in the team's WPILib environment.
 
 ## Student exercises
 

@@ -7,7 +7,9 @@ import frc.robot.subsystems.DriveSubsystem;
 
 /** Reads the driver's sticks repeatedly and requests drivetrain movement. */
 public class DriveCommand extends Command {
-  // Preserve scaling before the helper applies deadband, squaring, and mixing.
+  // This command scales stick inputs only. WPILib's DifferentialDrive
+  // later applies its default 0.02 deadband, input squaring, and mixing.
+  // Do not repeat those calculations here: that would change drive response.
   private static final double INPUT_SCALE = 0.6;
 
   private final DriveSubsystem drivetrain;
@@ -32,8 +34,14 @@ public class DriveCommand extends Command {
       return;
     }
 
-    // Preserve the original axes and signs so driving feels the same.
+    // Xbox stick Y is negative when pushed forward. Negating it makes
+    // forward stick movement a positive forward request for WPILib.
     double forward = -controller.getLeftY() * INPUT_SCALE;
+
+    // Xbox stick X is positive to the right. WPILib's positive rotation is
+    // counterclockwise (left), so negate X to request a clockwise right turn.
+    // These stick signs translate driver inputs; motor inversion in the
+    // subsystem separately corrects the hardware's output direction.
     double turn = -controller.getRightX() * INPUT_SCALE;
     drivetrain.arcadeDrive(forward, turn);
   }

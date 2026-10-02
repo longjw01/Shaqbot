@@ -12,13 +12,20 @@ public class DriveSubsystem extends SubsystemBase {
   // not CAN device IDs.
   private static final int LEFT_MOTOR_PWM_PORT = 0;
   private static final int RIGHT_MOTOR_PWM_PORT = 1;
+  // Motor mounting, wiring, and gearing determine which side needs inversion.
+  // Mirrored motor mounting commonly requires one side to be reversed so
+  // a forward request moves both sides forward. Keep ShaqBot's working
+  // left-side inversion; other robots may need a different configuration.
+  // This hardware correction is separate from the joystick signs in DriveCommand.
   private static final boolean LEFT_MOTOR_INVERTED = true;
   private static final boolean RIGHT_MOTOR_INVERTED = false;
 
   private final PWMSparkMax leftMotor = new PWMSparkMax(LEFT_MOTOR_PWM_PORT);
   private final PWMSparkMax rightMotor = new PWMSparkMax(RIGHT_MOTOR_PWM_PORT);
 
-  // The helper combines forward and turn inputs into left/right outputs.
+  // This is WPILib's drive helper. Its arcadeDrive() applies a built-in
+  // deadband, optionally squares inputs, and calculates left/right outputs.
+  // We keep its default deadband of 0.02 (inherited from RobotDriveBase).
   // Each "::set" identifies the method used to send a motor's output.
   private final DifferentialDrive drive =
       new DifferentialDrive(leftMotor::set, rightMotor::set);
@@ -36,8 +43,11 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Inputs normally range from -1 to +1: forward/reverse and turning. */
   public void arcadeDrive(double forward, double turn) {
-    // Explicitly preserve the original default: square input magnitudes
-    // while keeping their signs, for gentler response near stick center.
+    // WPILib first applies its default 0.02 deadband to these already-scaled
+    // inputs. The third argument, true, then enables WPILib's input squaring
+    // while preserving signs. Both calculations happen inside WPILib.
+    // The original two-argument call also enabled squaring by default;
+    // keeping it explicit here preserves the same driving response.
     drive.arcadeDrive(forward, turn, true);
   }
 
