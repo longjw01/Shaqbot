@@ -92,7 +92,25 @@ double forward = -controller.getLeftY() * INPUT_SCALE;
 double turn = -controller.getRightX() * INPUT_SCALE;
 ```
 
-The negative signs preserve the original direction mapping. Our `DriveCommand` reads and scales the inputs, then passes them through our subsystem to WPILib:
+### Why invert a motor and negate the stick inputs?
+
+These settings correct directions at different points in the program:
+
+| Setting | What it changes | Why it is used |
+|---|---|---|
+| `leftMotor.setInverted(true)` | The left motor's electrical output direction | Preserves the original robot's working motor direction configuration |
+| `-controller.getLeftY()` | The forward/reverse request | Xbox stick Y is negative when pushed forward; WPILib expects positive input for forward movement |
+| `-controller.getRightX()` | The turning request | Xbox stick X is positive when pushed right; WPILib expects negative rotation for a clockwise (right) turn |
+
+On a differential drivetrain, left and right motors are commonly mounted facing opposite directions. Their mounting, wiring, and gearing determine which motor outputs must be inverted so a forward request moves both sides forward. ShaqBot keeps the left-side inversion from its original working code; left-side inversion is not a universal rule for every robot.
+
+The joystick negative signs translate the controller's axis conventions into WPILib's driving conventions. WPILib treats positive rotation as counterclockwise (a left turn), so negating the right-stick X value makes a right stick movement request a right turn.
+
+Motor inversion does not replace the joystick sign corrections: one handles hardware direction, while the others handle how the driver's inputs are interpreted. None of these changes input magnitude; `INPUT_SCALE` controls that separately.
+
+### Where deadband and squaring happen
+
+Our `DriveCommand` reads and scales the inputs, then passes them through our subsystem to WPILib:
 
 ```java
 // In DriveSubsystem: call the WPILib drive helper.
