@@ -12,6 +12,11 @@ public class DriveSubsystem extends SubsystemBase {
   // not CAN device IDs.
   private static final int LEFT_MOTOR_PWM_PORT = 0;
   private static final int RIGHT_MOTOR_PWM_PORT = 1;
+  // Motor mounting, wiring, and gearing determine which side needs inversion.
+  // Mirrored motor mounting commonly requires one side to be reversed so
+  // a forward request moves both sides forward. Keep ShaqBot's working
+  // left-side inversion; other robots may need a different configuration.
+  // This hardware correction is separate from the joystick signs in DriveCommand.
   private static final boolean LEFT_MOTOR_INVERTED = true;
   private static final boolean RIGHT_MOTOR_INVERTED = false;
 
