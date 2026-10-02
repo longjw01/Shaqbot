@@ -7,7 +7,9 @@ import frc.robot.subsystems.DriveSubsystem;
 
 /** Reads the driver's sticks repeatedly and requests drivetrain movement. */
 public class DriveCommand extends Command {
-  // Preserve scaling before the helper applies deadband, squaring, and mixing.
+  // This command scales stick inputs only. WPILib's DifferentialDrive
+  // later applies its default 0.02 deadband, input squaring, and mixing.
+  // Do not repeat those calculations here: that would change drive response.
   private static final double INPUT_SCALE = 0.6;
 
   private final DriveSubsystem drivetrain;
