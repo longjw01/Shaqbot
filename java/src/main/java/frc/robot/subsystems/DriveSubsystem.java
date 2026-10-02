@@ -18,7 +18,9 @@ public class DriveSubsystem extends SubsystemBase {
   private final PWMSparkMax leftMotor = new PWMSparkMax(LEFT_MOTOR_PWM_PORT);
   private final PWMSparkMax rightMotor = new PWMSparkMax(RIGHT_MOTOR_PWM_PORT);
 
-  // The helper combines forward and turn inputs into left/right outputs.
+  // This is WPILib's drive helper. Its arcadeDrive() applies a built-in
+  // deadband, optionally squares inputs, and calculates left/right outputs.
+  // We keep its default deadband of 0.02 (inherited from RobotDriveBase).
   // Each "::set" identifies the method used to send a motor's output.
   private final DifferentialDrive drive =
       new DifferentialDrive(leftMotor::set, rightMotor::set);
@@ -36,8 +38,11 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Inputs normally range from -1 to +1: forward/reverse and turning. */
   public void arcadeDrive(double forward, double turn) {
-    // Explicitly preserve the original default: square input magnitudes
-    // while keeping their signs, for gentler response near stick center.
+    // WPILib first applies its default 0.02 deadband to these already-scaled
+    // inputs. The third argument, true, then enables WPILib's input squaring
+    // while preserving signs. Both calculations happen inside WPILib.
+    // The original two-argument call also enabled squaring by default;
+    // keeping it explicit here preserves the same driving response.
     drive.arcadeDrive(forward, turn, true);
   }
 
